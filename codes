@@ -1,0 +1,83 @@
+import pandas as pd
+import numpy as np
+import seaborn as sb
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split, cross_val_score, KFold, GridSearchCV
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, classification_report, plot_confusion_matrix
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.svm import SVC
+from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
+import xgboost as xgb
+import itertools
+import warnings
+
+data = pd.read_csv(r"C:\Users\hande\Desktop\yapayzeka\diabetes.csv", sep=',')
+cols = ["Glucose", "BloodPressure", "Insulin", "SkinThickness", "BMI"]
+
+# Boş değerlerin işlenmesi
+for col in cols:
+    data[col].replace(0, np.NaN, inplace=True)
+
+# Eksik değerlerin doldurulması
+for col in data.columns:
+    data.loc[(data["Outcome"]==0) & (data[col].isnull()), col] = data[data["Outcome"]==0][col].median()
+    data.loc[(data["Outcome"]==1) & (data[col].isnull()), col] = data[data["Outcome"]==1][col].median()
+
+# Diyabetli ve diyabetli olmayan kişilerin dağılımı
+fig1, ax1 = plt.subplots()
+ax1.pie([np.sum(data["Outcome"] == 0), np.sum(data["Outcome"] == 1)], labels=['No Diabetes', 'Diabetes'], autopct='%1.0f%%', startangle=90, colors=['#99ff99','#ff9999'])
+ax1.axis('equal')
+plt.tight_layout()
+plt.show()
+
+x = data[['Pregnancies', 'Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI', 'DiabetesPedigreeFunction', 'Age']]
+y = data['Outcome']
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+
+# Standardizasyon işlemi
+Sc_X = StandardScaler()
+X_train = Sc_X.fit_transform(x_train)
+X_test = Sc_X.transform(x_test)
+
+svc_model = SVC(kernel='linear')
+y_pred = svc_model.fit(x_train, y_train).predict(x_test)
+
+# Hata matrisi ve model değerlendirme
+plot_confusion_matrix(svc_model, x_test, y_test, cmap=plt.cm.Blues, values_format='d', normalize=None, display_labels=['No', 'Yes'])
+print("accuracy ==> {0:.0%}".format(accuracy_score(y_test, y_pred)))
+print("precision ==> {0:.0%}".format(precision_score(y_test, y_pred)))
+print("recall ==> {:0.2f}".format(recall_score(y_test, y_pred)))
+print("f1_score ==> {:0.2f}".format(f1_score(y_test, y_pred)))
+
+dt_model = tree.DecisionTreeClassifier(criterion='gini')
+y_pred = dt_model.fit(x_train, y_train).predict(x_test)
+
+# Hata matrisi ve model değerlendirme
+plot_confusion_matrix(dt_model, x_test, y_test, cmap=plt.cm.Blues, values_format='d', normalize=None, display_labels=['No', 'Yes'])
+print("accuracy ==> {0:.0%}".format(accuracy_score(y_test, y_pred)))
+print("precision ==> {0:.0%}".format(precision_score(y_test, y_pred)))
+print("recall ==> {:0.2f}".format(recall_score(y_test, y_pred)))
+print("f1_score ==> {:0.2f}".format(f1_score(y_test, y_pred)))
+
+rf_model = RandomForestClassifier(n_estimators=15)
+rf_model.fit(x_train, y_train)
+y_pred = rf_model.predict(x_test)
+
+# Hata matrisi ve model değerlendirme
+plot_confusion_matrix(rf_model, x_test, y_test, cmap=plt.cm.Blues, values_format='d', normalize=None, display_labels=['No', 'Yes'])
+print("accuracy ==> {0:.0%}".format(accuracy_score(y_test, y_pred)))
+print("precision ==> {0:.0%}".format(precision_score(y_test, y_pred)))
+print("recall ==> {:0.2f}".format(recall_score(y_test, y_pred)))
+print("f1_score ==> {:0.2f}".format(f1_score(y_test, y_pred)))
+
+xgbc = xgb.XGBClassifier()
+xgbc.fit(x_train, y_train)
+predict_xgbc = xgbc.predict(x_test)
+
+# Hata matrisi ve model değerlendirme
+print(confusion_matrix(y_test, predict_xgbc))
+print(classification_report(y_test, predict_xgbc))
+print('Accuracy Score:', round(accuracy_score(y_test, predict_xgbc), ndigits=2))
+
